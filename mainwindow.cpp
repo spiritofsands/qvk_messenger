@@ -67,12 +67,14 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ui->contentStackedWidget->setCurrentIndex(DIALOGS_PAGE);
 
-    displayProfilesList();
+    vkLogic->makeRequest(Request::GET_LONG_POLL_SERVER);
 
-    if (vkLogic->isAuthorized())
-        requestAndShowDialogs();
-    else
-        qDebug() << "Not authorized";
+//    displayProfilesList();
+
+//    if (vkLogic->isAuthorized())
+//        requestAndShowDialogs();
+//    else
+//        qDebug() << "Not authorized";
 }
 
 MainWindow::~MainWindow()

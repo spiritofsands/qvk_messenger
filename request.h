@@ -11,7 +11,8 @@ public:
         GET_AVATAR,
         LOAD_DIALOGS,
         LOAD_CONVERSATION,
-        SEND_MESSAGE
+        SEND_MESSAGE,
+        GET_LONG_POLL_SERVER
     };
 
     Request(RequestType new_type,
@@ -43,6 +44,8 @@ public:
             return "LOAD_CONVERSATION";
         else if (type == SEND_MESSAGE)
             return "SEND_MESSAGE";
+        else if (type == GET_LONG_POLL_SERVER)
+            return "GET_LONG_POLL_SERVER";
         else
             return "UNKNOWN_REQUEST_TYPE";
     }

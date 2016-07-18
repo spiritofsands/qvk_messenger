@@ -34,7 +34,7 @@ public:
     QPixmap getAvatar(int profileID);
 
     void makeRequest(Request::RequestType type,
-                     int profileID,
+                     int profileID = 0,
                      QString URL = QString());
     void updateDialogList();
     void parseAuthURL(QString url);
@@ -75,6 +75,15 @@ private:
     int messagesOffset = 0;
 
     const int maxRandID = 100000;
+
+    struct LongPollServer{
+        const bool useSsl = true;
+        const bool needPts = false;
+
+        QString key;
+        QString server;
+        long ts;
+    } longpoll;
 
     void authCompleted();
     void setExpiresIn(QString const &);

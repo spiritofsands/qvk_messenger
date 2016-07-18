@@ -68,17 +68,27 @@ void NetworkLogic::serverReplyHandler(QNetworkReply *reply, Request const &reque
     auto error = reply->error();
     if (error != QNetworkReply::NoError) {
         qDebug() << "Network error: " << reply->errorString();
-        return;
     }
     else
     {//===============================================================================
-        if (type == Request::GET_PROFILE_INFO)
+        if (type == Request::GET_PROFILE_INFO
+                || type == Request::LOAD_DIALOGS
+                || type == Request::LOAD_CONVERSATION
+                || type == Request::SEND_MESSAGE
+                || type == Request::GET_LONG_POLL_SERVER)
         {
             QByteArray rawReply = reply->readAll();
 
-            QJsonDocument jsonReply(QJsonDocument::fromJson(rawReply));
+            QJsonParseError e;
+            QJsonDocument jsonReply(QJsonDocument::fromJson(rawReply, &e));
+
+            if (e.error != QJsonParseError::NoError) {
+                qDebug() << "Parse error:"
+                         << e.errorString();
+            }
             if (jsonReply.isNull()) {
                 qDebug() << "jsonreply is NULL";
+                qDebug() << "error: " << e.errorString();
                 qDebug() << "Raw reply: " << rawReply;
             }
             else if (jsonReply.isEmpty()) {
@@ -102,82 +112,6 @@ void NetworkLogic::serverReplyHandler(QNetworkReply *reply, Request const &reque
 
             mainWindow->handleStorageUpdate(type, profileID);
         }//==========================================================================
-        else if (type == Request::LOAD_DIALOGS)
-        {
-            QByteArray rawReply = reply->readAll();
-
-            QJsonParseError e;
-            QJsonDocument jsonReply(QJsonDocument::fromJson(rawReply, &e));
-            //do something with error
-
-            if (e.error != QJsonParseError::NoError) {
-                qDebug() << "Parse error:"
-                         << e.errorString();
-            }
-            if (jsonReply.isNull()) {
-                qDebug() << "jsonreply is NULL";
-                qDebug() << "error: " << e.errorString();
-                qDebug() << "Raw reply: " << rawReply;
-            }
-            else if (jsonReply.isEmpty()) {
-                qDebug() << "jsonreply is empty";
-                qDebug() << "Raw reply: " << rawReply;
-            }
-            else {
-                qDebug() << "jsonreply is OK";
-                parseJsonReply(jsonReply, request);
-            }
-        }//==========================================================================
-        else if (type == Request::LOAD_CONVERSATION)
-        {
-            QByteArray rawReply = reply->readAll();
-
-            QJsonParseError e;
-            QJsonDocument jsonReply(QJsonDocument::fromJson(rawReply, &e));
-
-            if (e.error != QJsonParseError::NoError) {
-                qDebug() << "Parse error:"
-                         << e.errorString();
-            }
-            if (jsonReply.isNull()) {
-                qDebug() << "jsonreply is NULL";
-                qDebug() << "error: " << e.errorString();
-                qDebug() << "Raw reply: " << rawReply;
-            }
-            else if (jsonReply.isEmpty()) {
-                qDebug() << "jsonreply is empty";
-                qDebug() << "Raw reply: " << rawReply;
-            }
-            else {
-                qDebug() << "jsonreply is OK";
-                parseJsonReply(jsonReply, request);
-            }
-        }//==========================================================================
-        else if (type == Request::SEND_MESSAGE)
-        {
-            QByteArray rawReply = reply->readAll();
-
-            QJsonParseError e;
-            QJsonDocument jsonReply(QJsonDocument::fromJson(rawReply, &e));
-
-            if (e.error != QJsonParseError::NoError) {
-                qDebug() << "Parse error:"
-                         << e.errorString();
-            }
-            if (jsonReply.isNull()) {
-                qDebug() << "jsonreply is NULL";
-                qDebug() << "error: " << e.errorString();
-                qDebug() << "Raw reply: " << rawReply;
-            }
-            else if (jsonReply.isEmpty()) {
-                qDebug() << "jsonreply is empty";
-                qDebug() << "Raw reply: " << rawReply;
-            }
-            else {
-                qDebug() << "jsonreply is OK";
-                parseJsonReply(jsonReply, request);
-            }
-        }
         else
             qDebug() << "Unknown type of request in serverReplyHandler";
     }
@@ -350,6 +284,29 @@ void NetworkLogic::parseJsonReply(QJsonDocument const &jsonReply, Request const 
 
         mainWindow->updateMessagesWithCurrentUser();
     }
+    else if (type == Request::GET_LONG_POLL_SERVER)
+    {
+        if (!jsonObject.contains("response")) {
+            qDebug() << "Error: jsonObject is not containing 'response'";
+            return;
+        }
+        if (!jsonObject["response"].isObject()) {
+            qDebug() << "Error: jsonObject is not object";
+            return;
+        }
+
+        QJsonObject response = jsonObject["response"].toObject();
+
+        longpoll.key = response["key"].toString();
+        longpoll.server = response["server"].toString();
+        longpoll.ts = response["ts"].toInt();
+
+        qDebug() << "Longpoll data:";
+        qDebug() << longpoll.key;
+        qDebug() << longpoll.server;
+        qDebug() << longpoll.ts;
+
+    }
     else
     {
         qDebug() << "Unknown method name";
@@ -505,7 +462,7 @@ void NetworkLogic::makeRequest(Request::RequestType type,
             }
         }
         else {
-            qDebug() << "Requesting avatar for non-existant user";
+            qDebug() << "Requesting avatar for non-existent user";
             return;
         }
     }
@@ -563,6 +520,23 @@ void NetworkLogic::makeRequest(Request::RequestType type,
                 .append(QString::number(randomID))
                 .append("&message=")
                 .append(requestData)
+                .append("&access_token=")
+                .append(accessToken)
+                .append("&v=")
+                .append(apiVersion);
+
+        finalURL = QString().append(methodURL)
+                .append(methodName)
+                .append('?')
+                .append(parameters);
+    }
+    else if (type == Request::GET_LONG_POLL_SERVER)
+    {
+        static const QString methodName("messages.getLongPollServer");
+        QString parameters("use_ssl=");
+        parameters.append(QString::number(longpoll.useSsl))
+                .append("&need_pts=")
+                .append(QString::number(longpoll.needPts))
                 .append("&access_token=")
                 .append(accessToken)
                 .append("&v=")
