@@ -49,22 +49,34 @@ private slots:
 
 private:
     QTimer *authExpiredTimer;
+    QString accessToken;
+    QDateTime expiresIn;
+    int ownProfileID = 0;
+    bool authorized = false;
+
+    const QString apiVersion = "5.52";
+
     QTimer *requestTimer;
+    const unsigned int requestsPerSecond = 3;
+    unsigned int numberOfActiveRequests = 0;
+
+    struct LongpollServer{
+        const bool useSsl = true;
+        const bool needPts = false;
+        const int wait = 25; //seconds
+        const int mode = 2;
+
+        bool connected = false;
+
+        QString key;
+        QString server;
+        long ts;
+    } longpoll;
 
     MainWindow *mainWindow;
     SharedCookieJar *cookieJar;
     QNetworkAccessManager *nam;
 
-    const QString apiVersion;
-
-    const unsigned int requestsPerSecond;
-    unsigned int numberOfActiveRequests;
-
-    bool authorized = false;
-    QString accessToken;
-    QDateTime expiresIn;
-    int ownProfileID = 0;
-             //methodName parameters
     QQueue<Request> requestsQueue;
 
     const unsigned int dialogsCount = 50;
@@ -75,15 +87,6 @@ private:
     int messagesOffset = 0;
 
     const int maxRandID = 100000;
-
-    struct LongPollServer{
-        const bool useSsl = true;
-        const bool needPts = false;
-
-        QString key;
-        QString server;
-        long ts;
-    } longpoll;
 
     void authCompleted();
     void setExpiresIn(QString const &);
@@ -96,6 +99,8 @@ private:
     void enqueueRequest(Request const &request);
     Message createMessageFromJsonObject(QJsonObject const &messageJson);
     QJsonObject prepareDialogJsonObject(QJsonValue const &messageJsonValue);
+
+    void handleLongpollUpdate(QJsonArray const &update);
 };
 
 #endif // QVK_LOGIC_H

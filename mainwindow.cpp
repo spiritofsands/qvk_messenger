@@ -67,14 +67,14 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ui->contentStackedWidget->setCurrentIndex(DIALOGS_PAGE);
 
-    vkLogic->makeRequest(Request::GET_LONG_POLL_SERVER);
+    vkLogic->makeRequest(Request::GET_LONGPOLL_SERVER);
 
 //    displayProfilesList();
 
-//    if (vkLogic->isAuthorized())
-//        requestAndShowDialogs();
-//    else
-//        qDebug() << "Not authorized";
+    if (vkLogic->isAuthorized())
+        requestAndShowDialogs();
+    else
+        qDebug() << "Not authorized";
 }
 
 MainWindow::~MainWindow()
@@ -107,18 +107,18 @@ void MainWindow::showAuthPageAndLoadURL()
 
     qDebug() << "Showing auth page";
 
-    QString baseURL("https://oauth.vk.com/authorize?");
-    QString clientID(QString("client_id=")
+    static const QString baseURL("https://oauth.vk.com/authorize?");
+    static const QString clientID(QString("client_id=")
                     .append(QString::number(myAppID)));
-    QString scope(QString("&scope=")
+    static const QString scope(QString("&scope=")
                     .append(QString::number(myScope)));
-    QString redirectURI(QString("&redirect_uri=")
+    static const QString redirectURI(QString("&redirect_uri=")
                     .append(myRedirectURI));
-    QString display(QString("&display=")
+    static const QString display(QString("&display=")
                     .append(myDisplay));
-    QString apiVersion(QString("&v=")
+    static const QString apiVersion(QString("&v=")
                     .append(myApiVersion));
-    QString responseType(QString("&response_type=")
+    static const QString responseType(QString("&response_type=")
                     .append(myResponseType));
     QString authURL = baseURL + clientID + scope + redirectURI
             + display + apiVersion + responseType;

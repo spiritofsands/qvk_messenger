@@ -12,7 +12,8 @@ public:
         LOAD_DIALOGS,
         LOAD_CONVERSATION,
         SEND_MESSAGE,
-        GET_LONG_POLL_SERVER
+        GET_LONGPOLL_SERVER,
+        CONNECT_TO_LONGPOLL_SERVER
     };
 
     Request(RequestType new_type,
@@ -44,8 +45,10 @@ public:
             return "LOAD_CONVERSATION";
         else if (type == SEND_MESSAGE)
             return "SEND_MESSAGE";
-        else if (type == GET_LONG_POLL_SERVER)
-            return "GET_LONG_POLL_SERVER";
+        else if (type == GET_LONGPOLL_SERVER)
+            return "GET_LONGPOLL_SERVER";
+        else if (type == CONNECT_TO_LONGPOLL_SERVER)
+            return "CONNECT_TO_LONGPOLL_SERVER";
         else
             return "UNKNOWN_REQUEST_TYPE";
     }

@@ -71,11 +71,13 @@ void NetworkLogic::serverReplyHandler(QNetworkReply *reply, Request const &reque
     }
     else
     {//===============================================================================
+        //JSON answers
         if (type == Request::GET_PROFILE_INFO
                 || type == Request::LOAD_DIALOGS
                 || type == Request::LOAD_CONVERSATION
                 || type == Request::SEND_MESSAGE
-                || type == Request::GET_LONG_POLL_SERVER)
+                || type == Request::GET_LONGPOLL_SERVER
+                || type == Request::CONNECT_TO_LONGPOLL_SERVER)
         {
             QByteArray rawReply = reply->readAll();
 
@@ -124,14 +126,17 @@ void NetworkLogic::serverReplyHandler(QNetworkReply *reply, Request const &reque
 
 void NetworkLogic::parseJsonReply(QJsonDocument const &jsonReply, Request const &request)
 {
-    //qDebug() << "Parsing JSON:" << jsonReply;
+    qDebug() << "Parsing JSON:" << jsonReply;
 
     //assuming jsonReply is not empty and it is an object
     QJsonObject jsonObject(jsonReply.object());
 
+    //error?
+
     auto type = request.type();
     if (type == Request::GET_PROFILE_INFO)
     {
+        //failproof
         if (!jsonObject.contains("response")) {
             qDebug() << "Error: jsonObject is not containing 'response'";
             qDebug() << "Json reply: " << jsonReply;
@@ -284,7 +289,7 @@ void NetworkLogic::parseJsonReply(QJsonDocument const &jsonReply, Request const 
 
         mainWindow->updateMessagesWithCurrentUser();
     }
-    else if (type == Request::GET_LONG_POLL_SERVER)
+    else if (type == Request::GET_LONGPOLL_SERVER)
     {
         if (!jsonObject.contains("response")) {
             qDebug() << "Error: jsonObject is not containing 'response'";
@@ -297,14 +302,67 @@ void NetworkLogic::parseJsonReply(QJsonDocument const &jsonReply, Request const 
 
         QJsonObject response = jsonObject["response"].toObject();
 
-        longpoll.key = response["key"].toString();
-        longpoll.server = response["server"].toString();
-        longpoll.ts = response["ts"].toInt();
+        if (response.contains("key")
+                && response.contains("server")
+                && response.contains("ts"))
+        {
+            longpoll.key = response["key"].toString();
+            longpoll.server = response["server"].toString();
+            longpoll.ts = response["ts"].toInt();
 
-        qDebug() << "Longpoll data:";
-        qDebug() << longpoll.key;
-        qDebug() << longpoll.server;
-        qDebug() << longpoll.ts;
+            qDebug() << "Longpoll data:";
+            qDebug() << longpoll.key;
+            qDebug() << longpoll.server;
+            qDebug() << longpoll.ts;
+
+            longpoll.connected = true;
+
+            qDebug() << "Connecting to longpoll server";
+            makeRequest(Request::CONNECT_TO_LONGPOLL_SERVER);
+        }
+        else
+        {
+            longpoll.connected = false;
+            qDebug() << "Failed to connect to longpoll server";
+        }
+    }
+    else if (type == Request::CONNECT_TO_LONGPOLL_SERVER)
+    {
+        if (!jsonObject.contains("ts")) {
+            qDebug() << "Error: jsonObject is not containing 'ts'";
+            return;
+        }
+
+        longpoll.ts = jsonObject["ts"].toInt();
+        qDebug() << "New ts is" << longpoll.ts;
+
+        if (!jsonObject.contains("updates")) {
+            qDebug() << "Error: jsonObject is not containing 'updates'";
+            return;
+        }
+        if (!jsonObject["updates"].isArray())
+        {
+            qDebug() << "Error: jsonObject is not array";
+            return;
+        }
+
+        QJsonArray updates = jsonObject["updates"].toArray();
+
+        if (updates.size() == 0)
+            qDebug() << "No updates.";
+
+        foreach (QJsonValue const &currrentUpdate, updates) {
+            //unneccessary
+            if (!currrentUpdate.isArray()) {
+                qDebug() << "Error: value in updates array is not array";
+                return;
+            }
+
+            handleLongpollUpdate(currrentUpdate.toArray());
+        }
+
+        qDebug() << "Reconnecting to longpoll server";
+        makeRequest(Request::CONNECT_TO_LONGPOLL_SERVER);
 
     }
     else
@@ -413,6 +471,23 @@ Message NetworkLogic::createMessageFromJsonObject(QJsonObject const &messageJson
     }
 
     return msg;
+}
+
+void NetworkLogic::handleLongpollUpdate(QJsonArray const &update)
+{
+    int updateType = update[0].toInt();
+    qDebug() << "Handling longpol update of type:"
+             << updateType;
+
+    qDebug() << "Other elements:";
+
+    for (int currentElement = 1; currentElement < update.size();
+         ++currentElement)
+    {
+        qDebug() << update[currentElement];
+    }
+
+
 }
 
 void NetworkLogic::makeRequest(Request::RequestType type,
@@ -530,7 +605,7 @@ void NetworkLogic::makeRequest(Request::RequestType type,
                 .append('?')
                 .append(parameters);
     }
-    else if (type == Request::GET_LONG_POLL_SERVER)
+    else if (type == Request::GET_LONGPOLL_SERVER)
     {
         static const QString methodName("messages.getLongPollServer");
         QString parameters("use_ssl=");
@@ -546,6 +621,20 @@ void NetworkLogic::makeRequest(Request::RequestType type,
                 .append(methodName)
                 .append('?')
                 .append(parameters);
+    }
+    else if (type == Request::CONNECT_TO_LONGPOLL_SERVER)
+    {
+        QString protocol("https://");
+
+        finalURL = protocol.append(longpoll.server)
+                .append("?act=a_check&key=")
+                .append(longpoll.key)
+                .append("&ts=")
+                .append(QString::number(longpoll.ts))
+                .append("&wait=")
+                .append(QString::number(longpoll.wait))
+                .append("&mode=")
+                .append(QString::number(longpoll.mode));
     }
     else
     {
@@ -565,9 +654,9 @@ void NetworkLogic::requestOwnInfo()
 QPixmap NetworkLogic::getAvatar(int profileID)
 {
     if (storage->hasAvatar(profileID)) {
-        qDebug() << "Avatar for"
-                 << storage->getFullName(profileID)
-                 << "is ok";
+//        qDebug() << "Avatar for"
+//                 << storage->getFullName(profileID)
+//                 << "is ok";
         return storage->getAvatar(profileID);
     }
     else {

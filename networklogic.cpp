@@ -10,14 +10,7 @@ NetworkLogic::NetworkLogic(MainWindow *new_mainWindow)
     mainWindow(new_mainWindow),
 
     cookieJar(new SharedCookieJar), //nam takes ownership
-    nam(new QNetworkAccessManager),
-
-    apiVersion("5.52"),
-
-    requestsPerSecond(3),
-    numberOfActiveRequests(0),
-
-    authorized(false)
+    nam(new QNetworkAccessManager)
 {
     nam->setCookieJar(cookieJar);
 
