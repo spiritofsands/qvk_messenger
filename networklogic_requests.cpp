@@ -188,7 +188,6 @@ void NetworkLogic::parseJsonReply(QJsonDocument const &jsonReply, Request const 
         profile.photo_100 = response["photo_100"].toString();
         profile.status = response["status"].toString();
         profile.sex = response["sex"].toInt();
-        qDebug() << "### Profile is online?" << response["online"];
         profile.online = response["online"].toInt() == 1;
 
         storage->addProfile(currentProfileID, profile);
@@ -328,42 +327,81 @@ void NetworkLogic::parseJsonReply(QJsonDocument const &jsonReply, Request const 
     }
     else if (type == Request::CONNECT_TO_LONGPOLL_SERVER)
     {
-        if (!jsonObject.contains("ts")) {
-            qDebug() << "Error: jsonObject is not containing 'ts'";
-            return;
-        }
-
-        longpoll.ts = jsonObject["ts"].toInt();
-        qDebug() << "New ts is" << longpoll.ts;
-
-        if (!jsonObject.contains("updates")) {
-            qDebug() << "Error: jsonObject is not containing 'updates'";
-            return;
-        }
-        if (!jsonObject["updates"].isArray())
+        if (jsonObject.contains("ts")
+                && jsonObject.contains("updates")
+                && jsonObject["updates"].isArray())
         {
-            qDebug() << "Error: jsonObject is not array";
-            return;
+            longpoll.ts = jsonObject["ts"].toInt();
+            qDebug() << "New ts is" << longpoll.ts;
+
+            QJsonArray updates = jsonObject["updates"].toArray();
+
+            if (updates.size() == 0)
+                qDebug() << "No updates.";
+
+            foreach (QJsonValue const &currrentUpdate, updates) {
+                //unneccessary
+                if (!currrentUpdate.isArray()) {
+                    qDebug() << "Error: value in updates array is not array";
+                    break;
+                }
+                handleLongpollUpdate(currrentUpdate.toArray());
+            }
         }
-
-        QJsonArray updates = jsonObject["updates"].toArray();
-
-        if (updates.size() == 0)
-            qDebug() << "No updates.";
-
-        foreach (QJsonValue const &currrentUpdate, updates) {
-            //unneccessary
-            if (!currrentUpdate.isArray()) {
-                qDebug() << "Error: value in updates array is not array";
+        else //errors occured
+        {
+            if (!jsonObject.contains("failed")) {
+                qDebug() << "Error: jsonObject is not containing 'ts'"
+                            "nor 'updates' nor 'failed'";
+                qDebug() << "Get new longpoll server";
+                makeRequest(Request::GET_LONGPOLL_SERVER);
                 return;
             }
+            else //handling 'failed'
+            {
+                qDebug() << "Earned 'failed' state";
+                int failedState = jsonObject["failed"].toInt();
 
-            handleLongpollUpdate(currrentUpdate.toArray());
-        }
+                switch (failedState) {
+                case 1:
+                    if (!jsonObject.contains("ts")) {
+                        qDebug() << "No new ts";
+                        qDebug() << "Get new longpoll server";
+                        makeRequest(Request::GET_LONGPOLL_SERVER);
+                        return;
+                    }
+                    longpoll.ts = jsonObject["ts"].toInt();
+                    break;
 
-        qDebug() << "Reconnecting to longpoll server";
+                case 2:
+                    qDebug() << "Ts key expired";
+                    qDebug() << "Get new longpoll server";
+                    makeRequest(Request::GET_LONGPOLL_SERVER);
+                    return;
+                    break;
+
+                case 3:
+                    qDebug() << "User information is lost";
+                    qDebug() << "Get new longpoll server";
+                    makeRequest(Request::GET_LONGPOLL_SERVER);
+                    return;
+                    break;
+                case 4:
+                    qDebug() << "Wrong version in URL";
+                    break;
+                default:
+                    qDebug() << "Strange failed state:"
+                             << failedState;
+                    qDebug() << "Get new longpoll server";
+                    makeRequest(Request::GET_LONGPOLL_SERVER);
+                    return;
+                    break;
+                }
+            } // handling 'failed'
+        } // errors occured
+
+        qDebug() << "Connecting to longpoll server again";
         makeRequest(Request::CONNECT_TO_LONGPOLL_SERVER);
-
     }
     else
     {
@@ -464,7 +502,7 @@ Message NetworkLogic::createMessageFromJsonObject(QJsonObject const &messageJson
         dialogProfile.first_name = "Dialog";
         dialogProfile.last_name = QString::number(msg.chat_id);
         dialogProfile.photo_100 = msg.photo_100;
-        storage->addProfile(msg.chat_id, dialogProfile);
+        storage->addProfile(msg.chat_id + dialogProfileConst, dialogProfile);
     }
     else {
         msg.isMultiDialog = false;
@@ -475,19 +513,158 @@ Message NetworkLogic::createMessageFromJsonObject(QJsonObject const &messageJson
 
 void NetworkLogic::handleLongpollUpdate(QJsonArray const &update)
 {
-    int updateType = update[0].toInt();
+    static int updateType;
+
+    updateType = update[0].toInt();
     qDebug() << "Handling longpol update of type:"
              << updateType;
 
-    qDebug() << "Other elements:";
+    switch (updateType) {
+    case 1: {//Замена флагов сообщения
+        int messageID = update[1].toInt();
+        int flags = update[2].toInt();
+        //userID ignoring
+        qDebug() << "Changing flags of message"
+                 << messageID << "to" << flags;
+        //storage->changeMessageFlags(messageID, flags);
+        break;
+    }case 2: {//Установка флагов сообщения (FLAGS|=$mask)
+        int messageID = update[1].toInt();
+        int mask = update[2].toInt();
+        //peerID ignoring
+        qDebug() << "Changing mask of flags of message"
+                 << messageID << "to" << mask;
+        //storage->changeMessageFlagsMask(messageID, mask);
+        break;
+    }case 3: {// Сброс флагов сообщения (FLAGS&=~$mask)
+        int messageID = update[1].toInt();
+        int mask = update[2].toInt();
+        //peerID ignoring
+        qDebug() << "Resetting mask of flags of message"
+                 << messageID << "to" << mask;
+        //storage->resetMessageFlags(messageID, mask);
+        break;
+    }case 4: {// Добавление нового сообщения
+        int messageID = update[1].toInt();
+        //int flags = update[2].toInt();
+        int fromID = update[3].toInt();
+        int timestamp = update[4].toInt();
+        QString subject = update[5].toString();
+        QString text = update[6].toString();
+        //[$attachments] (array)
 
-    for (int currentElement = 1; currentElement < update.size();
-         ++currentElement)
-    {
-        qDebug() << update[currentElement];
-    }
+        Message message;
+        message.id = messageID;
+        if (fromID > dialogProfileConst) //multidialog
+            message.chat_id = fromID;
+        else
+            message.user_id = fromID;
+        message.date = timestamp;
+        message.title = subject;
+        message.body = text;
 
+        qDebug() << "Adding message from"
+                 << storage->getFullName(fromID)
+                 << "with text" << text;
+        storage->addMessage(fromID, message);
+        //storage->changeMessageFlags(messageID, flags);
+        break;
+    }case 6: {// Прочтение всех входящих сообщений
+        int peerID = update[1].toInt();
+        //int localID = update[2].toInt();
 
+        qDebug() << "Reading all incoming messages with"
+                 << storage->getFullName(peerID);
+
+        //storage->setIncomingMessagesRead(peerID, localID);
+        break;
+    }case 7: {// Прочтение всех исходящих сообщений
+        int peerID = update[1].toInt();
+        //int localID = update[2].toInt();
+
+        qDebug() << "Reading all outgoing messages with"
+                 << storage->getFullName(peerID);
+
+        //storage->setOutgoingMessagesRead(peerID, localID);
+        break;
+    }case 8: {// Друг стал онлайн
+        int userID = -update[1].toInt();
+        int extra = update[2].toInt();
+
+        qDebug() << "Friend" << storage->getFullName(userID)
+                 << "is online on";
+        if (extra >= 1 && extra <= 5) // mobile
+            qDebug() << "mobile";
+        else
+            qDebug() << "computer";
+
+        //storage->profileSetOnline(userID, extra);
+        break;
+    }case 9: {// Друг стал оффлайн
+        int userID = -update[1].toInt();
+        int flags = update[2].toInt();
+
+        qDebug() << "Friend" << storage->getFullName(userID)
+                 << "is";
+        if (flags == 0)
+            qDebug() << "offline";
+        else if (flags == 1)
+            qDebug() << "away";
+
+        //storage->profileSetOffline(userID, flags);
+        break;
+    }case 10: // флагu фильтрации по папкам для чата/собеседника
+    case 11:
+    case 12:
+        qDebug() << "Not implemented: directories = $mask";
+        break;
+    case 51: {// Один из параметров (состав, тема) беседы были изменены.
+        int chatID = update[1].toInt();
+        //$self (integer)
+
+        qDebug() << "Multidialog" << chatID << "need update";
+        //storage->updateMultiDialog(chatID);
+        break;
+    }case 61: {// Пользователь начал набирать текст в диалоге.
+        int userID = update[1].toInt();
+        //$flags (integer)
+
+        qDebug() << "User" << storage->getFullName(userID)
+                 << "is typing";
+        //storage->setProfileTyping();
+        break;
+    }case 62: {// Пользователь начал набирать текст в беседе
+        int userID = update[1].toInt();
+        int chatID = update[2].toInt();
+
+        qDebug() << "User" << storage->getFullName(userID)
+                 << "is typing in chat" << chatID;
+        //storage->setProfileTyping(chatID);
+        break;
+    }case 70: {// Пользователь совершил звонок
+        int userID = update[1].toInt();
+        //$call_id (integer)
+
+        qDebug() << "User" << storage->getFullName(userID)
+                 << "is calling";
+        break;
+    }case 80: {// Новый счетчик непрочитанных в левом меню
+        int count = update[1].toInt();
+
+        qDebug() << "Unread messages counter =" << count;
+        //mainWindow->setUnreadCount(count);
+        break;
+    }case 114: {// Изменились настройки оповещений
+        //int peerID = update[1].toInt();
+        //int sound = update[2].toInt();
+        //int disabledUntil = update[3].toInt();
+
+        qDebug() << "Notification settings are changed";
+        break;
+    }default:
+        qDebug() << "Unknown update type:" << updateType;
+        break;
+    };
 }
 
 void NetworkLogic::makeRequest(Request::RequestType type,

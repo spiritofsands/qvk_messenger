@@ -37,4 +37,5 @@ RESOURCES += \
     res.qrc
 
 DISTFILES += \
-    BUGS
+    BUGS \
+    TODO

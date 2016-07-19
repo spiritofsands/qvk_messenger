@@ -64,13 +64,13 @@ private:
         const bool useSsl = true;
         const bool needPts = false;
         const int wait = 25; //seconds
-        const int mode = 2;
+        const int mode = 64;
 
         bool connected = false;
 
         QString key;
         QString server;
-        long ts;
+        int ts;
     } longpoll;
 
     MainWindow *mainWindow;
@@ -87,6 +87,7 @@ private:
     int messagesOffset = 0;
 
     const int maxRandID = 100000;
+    const int dialogProfileConst = 2000000000;
 
     void authCompleted();
     void setExpiresIn(QString const &);
