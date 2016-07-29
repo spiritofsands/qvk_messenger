@@ -112,7 +112,7 @@ void NetworkLogic::serverReplyHandler(QNetworkReply *reply, Request const &reque
             qDebug() << "Set avatar for ID = "
                      << storage->getFullName(profileID);
 
-            mainWindow->handleStorageUpdate(type, profileID);
+            //mainWindow->handleStorageUpdate(type, profileID);
         }//==========================================================================
         else
             qDebug() << "Unknown type of request in serverReplyHandler";
@@ -193,7 +193,7 @@ void NetworkLogic::parseJsonReply(QJsonDocument const &jsonReply, Request const 
         storage->addProfile(currentProfileID, profile);
         qDebug() << "Added profile:" << storage->getFullName(currentProfileID);
 
-        mainWindow->handleStorageUpdate(type, currentProfileID);
+        //mainWindow->handleStorageUpdate(type, currentProfileID);
     }
     else if (type == Request::LOAD_DIALOGS)
     {
@@ -231,7 +231,7 @@ void NetworkLogic::parseJsonReply(QJsonDocument const &jsonReply, Request const 
 
         qDebug() << "Read dialogs:" << storage->numberOfDialogs() << "\n";
 
-        mainWindow->handleStorageUpdate(Request::LOAD_DIALOGS);
+        //mainWindow->handleStorageUpdate(Request::LOAD_DIALOGS);
     }
     else if (type == Request::LOAD_CONVERSATION)
     {
@@ -260,7 +260,7 @@ void NetworkLogic::parseJsonReply(QJsonDocument const &jsonReply, Request const 
         }
 
         qDebug() << "Deleting old messages";
-        storage->deleteAllMessages(request.profileID());
+        //storage->deleteAllMessages(request.profileID());
 
         qDebug() << "\nCreating messages.\n";
 
@@ -272,8 +272,7 @@ void NetworkLogic::parseJsonReply(QJsonDocument const &jsonReply, Request const 
 
         qDebug() << "Read messages:" << storage->numberOfDialogs() << "\n";
 
-        mainWindow->handleStorageUpdate(Request::LOAD_CONVERSATION,
-                                               request.profileID());
+        //mainWindow->handleStorageUpdate(Request::LOAD_CONVERSATION, request.profileID());
     }
     else if (type == Request::SEND_MESSAGE)
     {
@@ -286,7 +285,7 @@ void NetworkLogic::parseJsonReply(QJsonDocument const &jsonReply, Request const 
 
         qDebug() << "Sent message wit id" << sendMessageID;
 
-        mainWindow->updateMessagesWithCurrentUser();
+        //mainWindow->updateMessagesWithCurrentUser();
     }
     else if (type == Request::GET_LONGPOLL_SERVER)
     {

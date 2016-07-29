@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui network webkit webkitwidgets
+QT       += core gui network webenginewidgets
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 QMAKE_CXXFLAGS += -Wfatal-errors -pedantic-errors

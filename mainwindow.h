@@ -8,7 +8,7 @@
 
 #include "networklogic.h"
 #include "settingsmanager.h"
-#include "request.h"
+#include "storage.h"
 #include "message.h"
 
 class SettingsManager;
@@ -41,7 +41,6 @@ public:
 
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
-    void handleStorageUpdate(Request::RequestType type, int userID = 0);
     void showContentPage();
     void updateMessagesWithCurrentUser();
 
@@ -57,6 +56,8 @@ private slots:
     void showProfileInfo(int userID);
     void requestAndShowDialogs();
     void sendMessage();
+    void handleStorageUpdate(Storage::UpdateType type,
+                             int, int = 0);
 
 private:
     Ui::MainWindow *ui;
@@ -85,8 +86,11 @@ private:
     void loadMessageToListItem(Message const &&message,
                                QListWidgetItem *listItem);
     void setWindowPage(windowIndexes index);
-    void updateOwnInfo();
+    void updateOwnNameAndAvatar();
     void displayProfilesList();
+
+    void loadTextToProfileInfoPage(int profileID);
+    void loadAvatarToProfileInfoPage(int profileID);
 
 };
 

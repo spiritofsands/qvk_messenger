@@ -9,15 +9,24 @@
 #include "settingsmanager.h"
 #include "message.h"
 
-class Storage
+class Storage : public QObject
 {
+    Q_OBJECT
 
-friend class SettingsManager;
+    friend class SettingsManager;
 
 public:
+    enum UpdateType {
+        PROFILE_UPDATE,
+        AVATAR_UPDATE,
+        DIALOG_UPDATE,
+        MESSAGE_UPDATE
+    };
+
     void addProfile(int profileID, Profile const &profile)
     {
         profiles.insert(profileID, profile);
+        emit storageUpdate(PROFILE_UPDATE, profileID);
     }
 
     Profile const getProfile(int profileID) const //returning copy
@@ -30,7 +39,7 @@ public:
         return profiles.contains(profileID);
     }
 
-    QList<int> const getProfilesKays() const
+    QList<int> const getProfilesKeys() const
     {
         return profiles.keys();
     }
@@ -38,6 +47,7 @@ public:
     void setAvatar(int profileID, QImage const &avatar)
     {
         avatars[profileID] = QPixmap::fromImage(avatar);
+        emit storageUpdate(AVATAR_UPDATE, profileID);
     }
 
     QPixmap const getAvatar(int profileID) const
@@ -69,6 +79,9 @@ public:
     void addDialog(Message const &m)
     {
         dialogs.push_back(m);
+        emit storageUpdate(UpdateType::DIALOG_UPDATE,
+                           dialogs.size());//index of last message
+
     }
 
     int numberOfDialogs() const
@@ -85,6 +98,9 @@ public:
     void addMessage(int userID, Message const &m)
     {
         messages[userID].push_back(m);
+        emit storageUpdate(MESSAGE_UPDATE,
+                           userID,
+                           messages[userID].size());
     }
 
     int numberOfMessages(int userID) const
@@ -97,10 +113,14 @@ public:
         return messages[userID][messageID];
     }
 
-    void deleteAllMessages(int profileID)
-    {
-        messages[profileID].clear();
-    }
+//    void deleteAllMessages(int profileID)
+//    {
+//        messages[profileID].clear();
+//    }
+
+
+signals:
+    void storageUpdate(Storage::UpdateType type, int, int = 0);
 
 private:
     QMap<int, QPixmap> avatars;

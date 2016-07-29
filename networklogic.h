@@ -3,11 +3,12 @@
 
 #include <QString>
 #include <QTime>
-#include <QNetworkAccessManager>
+#include <QNetworkReply>
+//#include <QNetworkAccessManager>
 #include <QQueue>
 
 #include "mainwindow.h"
-#include "sharedcookiejar.h"
+//#include "sharedcookiejar.h"
 #include "storage.h"
 #include "request.h"
 #include "message.h"
@@ -28,7 +29,7 @@ public:
 
     bool isAuthorized() { return authorized; }
 
-    QNetworkAccessManager *getNam() { return nam; }
+    //QNetworkAccessManager *getNam() { return nam; }
     int getOwnProfileID(){ return ownProfileID; }
 
     QPixmap getAvatar(int profileID);
@@ -74,7 +75,7 @@ private:
     } longpoll;
 
     MainWindow *mainWindow;
-    SharedCookieJar *cookieJar;
+    //SharedCookieJar *cookieJar;
     QNetworkAccessManager *nam;
 
     QQueue<Request> requestsQueue;

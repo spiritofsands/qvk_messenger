@@ -22,27 +22,32 @@ MainWindow::MainWindow(QWidget *parent) :
                         this, vkLogic) )
 {
     ui->setupUi(this);
+
+    //---design improvements---
     ui->windowStackedWidget->setContentsMargins(0, 0, 0, 0);
     ui->contentStackedWidget->setContentsMargins(0, 0, 0, 0);
-
     ui->userInfoTextBrowser->viewport()->setAutoFillBackground(false);
 
-    ui->webView->page()->setNetworkAccessManager( vkLogic->getNam() );
+    //ui->webEngine->set
+    //        ->page()->setNetworkAccessManager( vkLogic->getNam() );
+
+    connect(vkLogic->storage, SIGNAL(storageUpdate(Storage::UpdateType,int,int)),
+            this, SLOT(handleStorageUpdate(Storage::UpdateType,int,int)));
 
     //---dialogs---
     connect(ui->dialogsWidget, SIGNAL(clicked(QModelIndex)),
             this, SLOT(showMessagesWith(QModelIndex)));
 
     //---webview---
-    connect(ui->webView, SIGNAL(urlChanged(QUrl)),
+    connect(ui->webEngine, SIGNAL(urlChanged(QUrl)),
             this, SLOT(authURLUpdated()));
 
-    ui->webView->page()->
-            setLinkDelegationPolicy(QWebPage::DelegateAllLinks);
-    ui->webView->setContextMenuPolicy(Qt::NoContextMenu);
+//    ui->webEngine->page()->
+//            setLinkDelegationPolicy(QWebPage::DelegateAllLinks);
+    ui->webEngine->setContextMenuPolicy(Qt::NoContextMenu);
 
-    connect(ui->webView, &QWebView::linkClicked,
-            this, [this](QUrl const &url){ ui->webView->load(url); });
+//    connect(ui->webEngine, &QWebEngineView::,
+//            this, [this](QUrl const &url){ ui->webView->load(url); });
 
     connect(ui->reloadButton, SIGNAL(clicked(bool)),
             this, SLOT(showAuthPageAndLoadURL()));
@@ -50,6 +55,10 @@ MainWindow::MainWindow(QWidget *parent) :
     //---buttons---
 
     connect(ui->backToDialogsButton, &QPushButton::clicked,this,
+            [this]{ ui->contentStackedWidget->setCurrentIndex(DIALOGS_PAGE); });
+
+    //temporary: need implement actual 'back' functional
+    connect(ui->backFromUserPageButton, &QPushButton::clicked, this,
             [this]{ ui->contentStackedWidget->setCurrentIndex(DIALOGS_PAGE); });
 
     connect(ui->userPageButton, &QPushButton::clicked, this,
@@ -67,12 +76,14 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ui->contentStackedWidget->setCurrentIndex(DIALOGS_PAGE);
 
-    vkLogic->makeRequest(Request::GET_LONGPOLL_SERVER);
-
 //    displayProfilesList();
 
     if (vkLogic->isAuthorized())
+    {
+        vkLogic->makeRequest(Request::GET_LONGPOLL_SERVER);
+
         requestAndShowDialogs();
+    }
     else
         qDebug() << "Not authorized";
 }
@@ -89,10 +100,10 @@ MainWindow::~MainWindow()
 void MainWindow::authURLUpdated()
 {
     static QString url;
-    ui->addressEdit->setText( ui->webView->url().toString() );
+    ui->addressEdit->setText( ui->webEngine->url().toString() );
     ui->addressEdit->setCursorPosition(0);
 
-    url = ui->webView->url().toString();
+    url = ui->webEngine->url().toString();
     if (url.startsWith(myRedirectURI))
     {
         qDebug() << "Auth URL starts with redirect URL";
@@ -123,7 +134,7 @@ void MainWindow::showAuthPageAndLoadURL()
     QString authURL = baseURL + clientID + scope + redirectURI
             + display + apiVersion + responseType;
 
-    ui->webView->load(QUrl(authURL));
+    ui->webEngine->load(QUrl(authURL));
 }
 
 //-----------------------end of auth page
@@ -143,25 +154,103 @@ void MainWindow::showContentPage()
     {
         qDebug() << "Loading own profile from storage";
 
-        updateOwnInfo();
+        updateOwnNameAndAvatar();
     } else {
         qDebug() << "Requesting own profile";
         vkLogic->makeRequest(Request::GET_PROFILE_INFO, myID);
     }
 }
 
-void MainWindow::updateOwnInfo()
+void MainWindow::updateOwnNameAndAvatar()
 {
     int id = vkLogic->getOwnProfileID();
     ui->userPageButton->setText(
                 vkLogic->storage->getFullName(id));
-    QPixmap pix(vkLogic->getAvatar(id));
 
-    ui->ownUserpicLabel->setPixmap(
-                pix);
+    ui->ownUserpicLabel->setPixmap(vkLogic->getAvatar(id));
 
     qDebug() << "Owner info is updated onscreen";
 }
+
+void MainWindow::loadTextToProfileInfoPage(int profileID)
+{
+    Profile const profile = vkLogic->storage->getProfile(profileID);
+
+    ui->contentStackedWidget->setEnabled(true);
+
+    QString userInfo;
+    QString newline("<br/><br/>");
+
+    qDebug() << "Displaying info of profile"
+        << vkLogic->storage->getFullName(profileID);
+
+    userInfo = "<big><b>" + profile.first_name
+            + " " + profile.last_name + "</b></big>";
+
+    userInfo+=newline;
+    if (!profile.deactivated.isEmpty())
+        userInfo+=tr("Account is deactivated: %1%2").arg(profile.deactivated).arg(newline);
+    else if (profile.hidden)
+        userInfo+=tr("Account is hidden%1").arg(newline);
+    else {
+        if (!profile.status.isEmpty())
+            userInfo+="<cite>" + profile.status + "</cite>" + newline;
+        if (profile.is_friend)
+            userInfo+=tr("Is your friend%1").arg(newline);
+        else if (profile.is_favorite)
+            userInfo+=tr("Is in your favorite list%1").arg(newline);
+
+        if (!profile.online)
+        {
+            userInfo+=tr("Last seen: ");
+            userInfo+=QDateTime::fromTime_t(profile.last_seen.time).toString();
+            if (profile.last_seen.platform != 7)
+                userInfo+=tr(" on mobile");
+        }
+        else
+            userInfo+=tr("Online");
+
+        userInfo+=newline;
+
+        if (!profile.connections.isEmpty())
+            userInfo+=tr("Has connections: %1%2")
+                    .arg(profile.connections).arg(newline);
+        if (!profile.contacts.mobile_phone.isEmpty())
+            userInfo+=tr("Mobile phone: %1%2")
+                    .arg(profile.contacts.mobile_phone).arg(newline);
+        if (!profile.contacts.home_phone.isEmpty())
+            userInfo+=tr("Home phone: %1%2")
+                    .arg(profile.contacts.home_phone).arg(newline);
+
+        if (profile.sex == MALE)
+            userInfo+=tr("Male%1").arg(newline);
+        else if (profile.sex == FEMALE)
+            userInfo+=tr("Female%1").arg(newline);
+
+        if (!profile.bdate.isEmpty()){
+            userInfo+=tr("Birthday: ");
+            userInfo+=profile.bdate;
+            userInfo+=newline;
+        }
+
+        if (!profile.country.title.isEmpty())
+            userInfo+=tr("Country: %1%2")
+                    .arg(profile.country.title).arg(newline);
+
+        if (!profile.city.title.isEmpty())
+            userInfo+=tr("City: %1%2")
+                    .arg(profile.city.title).arg(newline);
+    }
+
+    ui->userInfoTextBrowser->setHtml(userInfo);
+}
+
+void MainWindow::loadAvatarToProfileInfoPage(int profileID)
+{
+    ui->userPagePicLabel->setPixmap(
+                vkLogic->getAvatar(profileID));
+}
+
 
 void MainWindow::showProfileInfo(int profileID)
 {
@@ -169,72 +258,9 @@ void MainWindow::showProfileInfo(int profileID)
     displayingUserProfile = profileID;
 
     if (vkLogic->storage->containsProfile(profileID)){
-        Profile const profile = vkLogic->storage->getProfile(profileID);
+        loadTextToProfileInfoPage(profileID);
 
-        ui->contentStackedWidget->setEnabled(true);
-
-        QString userInfo;
-        QString newline("<br/><br/>");
-
-        qDebug() << "Displaying info of user"
-            << vkLogic->storage->getFullName(profileID);
-
-        userInfo = "<big><b>" + profile.first_name
-                + " " + profile.last_name + "</b></big>";
-
-        userInfo+=newline;
-        if (!profile.deactivated.isEmpty())
-            userInfo+=tr("Account is deactivated: %1%2").arg(profile.deactivated).arg(newline);
-        else if (profile.hidden)
-            userInfo+=tr("Account is hidden%1").arg(newline);
-        else {
-            if (!profile.status.isEmpty())
-                userInfo+="<cite>" + profile.status + "</cite>" + newline;
-            if (profile.is_friend)
-                userInfo+=tr("Is your friend%1").arg(newline);
-            else if (profile.is_favorite)
-                userInfo+=tr("Is in your faforite list%1").arg(newline);
-
-            userInfo+=tr("Last seen: ");
-            userInfo+=QDateTime::fromTime_t(profile.last_seen.time).toString();
-            if (profile.last_seen.platform != 7)
-                userInfo+=tr(" on mobile");
-            userInfo+=newline;
-
-            if (!profile.connections.isEmpty())
-                userInfo+=tr("Has connections: %1%2")
-                        .arg(profile.connections).arg(newline);
-            if (!profile.contacts.mobile_phone.isEmpty())
-                userInfo+=tr("Mobile phone: %1%2")
-                        .arg(profile.contacts.mobile_phone).arg(newline);
-            if (!profile.contacts.home_phone.isEmpty())
-                userInfo+=tr("Home phone: %1%2")
-                        .arg(profile.contacts.home_phone).arg(newline);
-
-            if (profile.sex == MALE)
-                userInfo+=tr("Male%1").arg(newline);
-            else if (profile.sex == FEMALE)
-                userInfo+=tr("Female%1").arg(newline);
-
-            if (!profile.bdate.isEmpty()){
-                userInfo+=tr("Birthday: ");
-                userInfo+=profile.bdate;
-                userInfo+=newline;
-            }
-
-            if (!profile.country.title.isEmpty())
-                userInfo+=tr("Country: %1%2")
-                        .arg(profile.country.title).arg(newline);
-
-            if (!profile.city.title.isEmpty())
-                userInfo+=tr("City: %1%2")
-                        .arg(profile.city.title).arg(newline);
-        }
-
-        ui->userInfoTextBrowser->setHtml(userInfo);
-
-        ui->userPagePicLabel->setPixmap(
-                    vkLogic->getAvatar(profileID));
+        loadAvatarToProfileInfoPage(profileID);
     }
     else { //not in storage
         ui->contentStackedWidget->setEnabled(false);
@@ -249,25 +275,37 @@ void MainWindow::closeEvent(QCloseEvent *event)
     event->accept();
 }
 
-void MainWindow::handleStorageUpdate(Request::RequestType type,
-                                         int profileID)
+void MainWindow::handleStorageUpdate(Storage::UpdateType type,
+                                         int profileID,
+                                         int messageID)
 {
-    qDebug() << "Handling storage update of type"
-             << Request::type(type);
-    //===============================================================================
-    if (type == Request::GET_PROFILE_INFO
-        || type == Request::GET_AVATAR)
+    if (type == Storage::PROFILE_UPDATE)
     {
         if (ui->contentStackedWidget->currentIndex() == PERSON_PAGE
             && profileID == displayingUserProfile)
         {
-            qDebug() << "Updated onscreen info of"
-                     << vkLogic->storage->getFullName(profileID);
+            qDebug() << "Updating person page text";
 
-            showProfileInfo(profileID);
+            loadTextToProfileInfoPage(profileID);
         }
+
+        //update friend list names and status
+
+
+    }
+    if (type == Storage::AVATAR_UPDATE)
+    {
+        if (ui->contentStackedWidget->currentIndex() == PERSON_PAGE
+            && profileID == displayingUserProfile)
+        {
+            qDebug() << "Updating person page avatar";
+
+            loadAvatarToProfileInfoPage(profileID);
+        }
+
+
         else if (profileID == vkLogic->getOwnProfileID()) {
-            updateOwnInfo();
+            updateOwnNameAndAvatar();
         }
         else if (ui->contentStackedWidget->currentIndex() == CONVERSATION_PAGE
                  && displayingConversationWithUser == profileID)
@@ -286,32 +324,36 @@ void MainWindow::handleStorageUpdate(Request::RequestType type,
             updateProfileInDialogs(profileID);
         }
     }//==============================================================================
-    else if (type == Request::LOAD_DIALOGS) {
-        int numberOfDialogs = vkLogic->storage->numberOfDialogs();
-        qDebug() << "Loading" << numberOfDialogs << "dialogs";
-        for (int dialogID = 0; dialogID < numberOfDialogs; ++dialogID)
-        {
-            QListWidgetItem *listItem = new QListWidgetItem(ui->dialogsWidget);
-            Message const &&dialog( vkLogic->storage->getDialog(dialogID) );
+    else if (type == Storage::DIALOG_UPDATE) {
+//        int numberOfDialogs = vkLogic->storage->numberOfDialogs();
+//        qDebug() << "Updating dialod with"
+//                 << vkLogic->storage->getFullName(profileID);
 
-            loadDialogToListItem(qMove(dialog), listItem);
-        }
+//        ui->dialogsWidget
+
+//        for (int dialogID = 0; dialogID < numberOfDialogs; ++dialogID)
+//        {
+//            QListWidgetItem *listItem = new QListWidgetItem(ui->dialogsWidget);
+//            Message const &&dialog( vkLogic->storage->getDialog(dialogID) );
+
+//            loadDialogToListItem(qMove(dialog), listItem);
+//        }
     }//==============================================================================
-    else if (type == Request::LOAD_CONVERSATION)
+    else if (type == Storage::MESSAGE_UPDATE)
     {
-        int conversationSize = vkLogic->storage->numberOfMessages(profileID);
-        qDebug() << "Loading" << conversationSize << "messages with"
-                 << vkLogic->storage->getFullName(profileID);
+//        int conversationSize = vkLogic->storage->numberOfMessages(profileID);
+//        qDebug() << "Loading" << conversationSize << "messages with"
+//                 << vkLogic->storage->getFullName(profileID);
 
-        for (int messageNumber = 0; messageNumber < conversationSize; ++messageNumber)
-        {
-            QListWidgetItem *listItem = new QListWidgetItem;
-            Message const &&message(vkLogic->storage->
-                                    getMessage(profileID, messageNumber));
-            loadMessageToListItem(qMove(message), listItem);
-            ui->messagesWithUserWidget->insertItem(0, listItem);
-        }
-        ui->messagesWithUserWidget->scrollToBottom();
+//        for (int messageNumber = 0; messageNumber < conversationSize; ++messageNumber)
+//        {
+//            QListWidgetItem *listItem = new QListWidgetItem;
+//            Message const &&message(vkLogic->storage->
+//                                    getMessage(profileID, messageNumber));
+//            loadMessageToListItem(qMove(message), listItem);
+//            ui->messagesWithUserWidget->insertItem(0, listItem);
+//        }
+//        ui->messagesWithUserWidget->scrollToBottom();
     }
     else {
         qDebug() << "Unknown type of storage update";
@@ -320,7 +362,7 @@ void MainWindow::handleStorageUpdate(Request::RequestType type,
 
 void MainWindow::displayProfilesList()
 {
-    foreach(int const &profileID, vkLogic->storage->getProfilesKays()) {
+    foreach(int const &profileID, vkLogic->storage->getProfilesKeys()) {
         QListWidgetItem *listItem = new QListWidgetItem(ui->friendsListView);
         Profile const &&profile = vkLogic->storage->getProfile(profileID);
         QString text = profile.first_name + ' ' + profile.last_name;

@@ -81,11 +81,11 @@ void SettingsManager::writeSettings()
     settings.beginGroup("Cookies");
     QByteArray rawCookies;
 
-    foreach( QNetworkCookie currentCookie,
-             vkLogic->cookieJar->getCookieList())
-        //save only crossession cookies
-        if ( !currentCookie.isSessionCookie() )
-            rawCookies.append( currentCookie.toRawForm() ).append( "\n" );
+//    foreach( QNetworkCookie currentCookie,
+//             vkLogic->cookieJar->getCookieList())
+//        //save only crossession cookies
+//        if ( !currentCookie.isSessionCookie() )
+//            rawCookies.append( currentCookie.toRawForm() ).append( "\n" );
 
     settings.setValue("cookies", rawCookies);
     settings.endGroup();
@@ -165,10 +165,10 @@ void SettingsManager::readSettings()
     mainWin->move(settings.value("pos", QPoint(200, 200)).toPoint());
     settings.endGroup();
 
-    settings.beginGroup("Cookies");
-    QByteArray rawCookies = settings.value("cookies").toByteArray();
-    vkLogic->cookieJar->setCookieJar( QNetworkCookie::parseCookies( rawCookies ) );
-    settings.endGroup();
+//    settings.beginGroup("Cookies");
+//    QByteArray rawCookies = settings.value("cookies").toByteArray();
+//    vkLogic->cookieJar->setCookieJar( QNetworkCookie::parseCookies( rawCookies ) );
+//    settings.endGroup();
 
     settings.beginGroup("OwnData");
     QString accessToken = settings.value("accessToken").toString();
