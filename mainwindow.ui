@@ -33,7 +33,7 @@
        <number>4</number>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="authPage">
        <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -299,7 +299,7 @@
            <number>0</number>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>2</number>
           </property>
           <widget class="QWidget" name="personPage">
            <layout class="QVBoxLayout" name="verticalLayout_7">
@@ -782,14 +782,20 @@ p, li { white-space: pre-wrap; }
                 <property name="verticalScrollMode">
                  <enum>QAbstractItemView::ScrollPerPixel</enum>
                 </property>
+                <property name="resizeMode">
+                 <enum>QListView::Fixed</enum>
+                </property>
                 <property name="spacing">
-                 <number>5</number>
+                 <number>0</number>
                 </property>
                 <property name="viewMode">
                  <enum>QListView::ListMode</enum>
                 </property>
                 <property name="uniformItemSizes">
                  <bool>true</bool>
+                </property>
+                <property name="batchSize">
+                 <number>80</number>
                 </property>
                 <property name="wordWrap">
                  <bool>true</bool>

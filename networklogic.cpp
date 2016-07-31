@@ -9,11 +9,8 @@ NetworkLogic::NetworkLogic(MainWindow *new_mainWindow)
 
     mainWindow(new_mainWindow),
 
-    //cookieJar(new SharedCookieJar), //nam takes ownership
     nam(new QNetworkAccessManager)
 {
-    //nam->setCookieJar(cookieJar);
-
     connect(authExpiredTimer, SIGNAL(timeout()), this, SLOT(authorize()));
     connect(requestTimer, SIGNAL(timeout()), this, SLOT(proceedRequestsQueue()));
 }

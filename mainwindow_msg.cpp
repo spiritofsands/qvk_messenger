@@ -1,26 +1,21 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "dialogdelegate.h"
 
 //---dialog---
-void MainWindow::loadDialogToListItem(Message const &&dialog, QListWidgetItem *listItem)
+void MainWindow::loadDialogToListItem(int dialogID, QListWidgetItem *listItem)
 {
-    QString body;
+    Message const &&dialog( vkLogic->storage->getDialog(dialogID) );
 
-    if (dialog.read_state == false)
-        body.append("[*]");
+    QString name(vkLogic->storage->getFullName(dialog.user_id)),
+            lastMessage(dialog.body);
 
     if (dialog.isMultiDialog)
-        body.append(dialog.title)
-            .append('\n');
+        name.prepend(dialog.title + "\n");
 
-    if (dialog.user_id != vkLogic->getOwnProfileID())
-        body.append(vkLogic->storage->getFullName(dialog.user_id))
-                .append('\n');
 
     if (dialog.out)
-        body.append(tr("You: "));
-
-    body.append(dialog.body);
+        lastMessage.prepend(tr("You: "));
 
     int profileID;
     if (dialog.isMultiDialog)
@@ -28,26 +23,19 @@ void MainWindow::loadDialogToListItem(Message const &&dialog, QListWidgetItem *l
     else
         profileID = dialog.user_id;
 
-    qDebug() << "Loading dialog with" << vkLogic->storage->getFullName(profileID);
+    qDebug() << "Loading dialog with" << name;
 
     listItem->setData(Qt::DecorationRole,
                       vkLogic->getAvatar(profileID));
-    listItem->setData(Qt::DisplayRole, body);
+    listItem->setData(DialogDelegate::NAME_ROLE, name);
+    listItem->setData(DialogDelegate::LAST_MESSAGE_ROLE, lastMessage);
+    listItem->setData(DialogDelegate::PROFILE_ID_ROLE, profileID);
+    listItem->setData(DialogDelegate::READ_STATE_ROLE, dialog.read_state);
 }
 
 void MainWindow::updateProfileInDialogs(int profileID)
 {
-    qDebug() << "Updating info of" << vkLogic->storage->getFullName(profileID)
-             << "in dialogs";
-    int rowsNumber = ui->dialogsWidget->count();
-    for (int currentRow = 0; currentRow < rowsNumber; ++currentRow)
-    {
-        QListWidgetItem *currentListItem =  ui->dialogsWidget->item(currentRow);
-        Message const &&dialog( vkLogic->storage->getDialog(currentRow) );
-
-        if (dialog.user_id == profileID || dialog.chat_id == profileID)
-            loadDialogToListItem(qMove(dialog), currentListItem);
-    }
+    //in progress
 }
 
 void MainWindow::requestAndShowDialogs()
@@ -149,7 +137,7 @@ void MainWindow::sendMessage()
     QString text = ui->messageTextEdit->toPlainText();
 
     if (!text.isEmpty()) {
-        text.insert(0, '"');
+        text.prepend('"');
         text.append('"');
 
         qDebug() << "Message:"

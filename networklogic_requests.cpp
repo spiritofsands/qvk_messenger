@@ -726,7 +726,7 @@ void NetworkLogic::makeRequest(Request::RequestType type,
                 .append(QString::number(dialogsOffset))
                 .append("&count=")
                 .append(QString::number(dialogsCount))
-                .append("&preview_length")
+                .append("&preview_length=")
                 .append(QString::number(dialogPreviewLength))
                 .append("&access_token=")
                 .append(accessToken)
@@ -830,9 +830,6 @@ void NetworkLogic::requestOwnInfo()
 QPixmap NetworkLogic::getAvatar(int profileID)
 {
     if (storage->hasAvatar(profileID)) {
-//        qDebug() << "Avatar for"
-//                 << storage->getFullName(profileID)
-//                 << "is ok";
         return storage->getAvatar(profileID);
     }
     else {

@@ -10,6 +10,7 @@
 #include "settingsmanager.h"
 #include "storage.h"
 #include "message.h"
+#include "dialogdelegate.h"
 
 class SettingsManager;
 class NetworkLogic;
@@ -25,19 +26,14 @@ class MainWindow : public QMainWindow
     friend class SettingsManager;
 
 public:
-    enum contentIndexes
+    enum ContentPages
          {PERSON_PAGE,
           CONVERSATION_PAGE,
           DIALOGS_PAGE};
 
-    enum windowIndexes
+    enum MainPages
          {AUTH_PAGE,
           CONTENT_PAGE};
-
-    enum Sex
-        {NOT_LISTED_SEX,
-        FEMALE,
-        MALE};
 
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
@@ -78,14 +74,16 @@ private:
     int displayingConversationWithUser = 0;
 
     QVector<QListWidgetItem *> dialogItems;
+    DialogDelegate dialogDelegate;
+
 
     void updateProfileInConversation(int profileID);
     void updateProfileInDialogs(int profileID);
-    void loadDialogToListItem(Message const &&message,
+    void loadDialogToListItem(int profileID,
                                QListWidgetItem *listItem);
     void loadMessageToListItem(Message const &&message,
                                QListWidgetItem *listItem);
-    void setWindowPage(windowIndexes index);
+    void setWindowPage(MainPages index);
     void updateOwnNameAndAvatar();
     void displayProfilesList();
 

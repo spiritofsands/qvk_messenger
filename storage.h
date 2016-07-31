@@ -79,8 +79,8 @@ public:
     void addDialog(Message const &m)
     {
         dialogs.push_back(m);
-        emit storageUpdate(UpdateType::DIALOG_UPDATE,
-                           dialogs.size());//index of last message
+        emit storageUpdate(DIALOG_UPDATE,
+                           dialogs.size()-1);//index of last dialog
 
     }
 

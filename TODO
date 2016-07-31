@@ -1,4 +1,5 @@
-redo storage update handling
+update handling
 fix bugs
-implement friends list
-implement searches
+friends list
+searches
+improve sizeHint for dialogs

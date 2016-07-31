@@ -20,16 +20,17 @@ SOURCES += main.cpp\
     networklogic.cpp \
     networklogic_auth.cpp \
     networklogic_requests.cpp \
-    mainwindow_msg.cpp
+    mainwindow_msg.cpp \
+    dialogdelegate.cpp
 
 HEADERS  += mainwindow.h \
     settingsmanager.h \
-    sharedcookiejar.h \
     storage.h \
     networklogic.h \
     request.h \
     message.h \
-    profile.h
+    profile.h \
+    dialogdelegate.h
 
 FORMS    += mainwindow.ui
 

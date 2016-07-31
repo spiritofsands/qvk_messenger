@@ -78,18 +78,6 @@ void SettingsManager::writeSettings()
                       mainWin->ui->userPageButton->text());
     settings.endGroup();
 
-    settings.beginGroup("Cookies");
-    QByteArray rawCookies;
-
-//    foreach( QNetworkCookie currentCookie,
-//             vkLogic->cookieJar->getCookieList())
-//        //save only crossession cookies
-//        if ( !currentCookie.isSessionCookie() )
-//            rawCookies.append( currentCookie.toRawForm() ).append( "\n" );
-
-    settings.setValue("cookies", rawCookies);
-    settings.endGroup();
-
     if ( vkLogic->isAuthorized() ) {
         settings.beginGroup("OwnData");
         settings.setValue("accessToken", vkLogic->accessToken);
@@ -112,9 +100,6 @@ void SettingsManager::writeSettings()
                 out << vkLogic->storage->profiles.size();
                 foreach (int const &id, vkLogic->storage->profiles.keys()){
                     out << id << vkLogic->storage->profiles[id];
-
-//                    qDebug() << "Wrote profile of"
-//                             << vkLogic->storage->getFullName(id);
                 }
 
                 qDebug() << "Saved" << vkLogic->storage->profiles.size()
@@ -165,11 +150,6 @@ void SettingsManager::readSettings()
     mainWin->move(settings.value("pos", QPoint(200, 200)).toPoint());
     settings.endGroup();
 
-//    settings.beginGroup("Cookies");
-//    QByteArray rawCookies = settings.value("cookies").toByteArray();
-//    vkLogic->cookieJar->setCookieJar( QNetworkCookie::parseCookies( rawCookies ) );
-//    settings.endGroup();
-
     settings.beginGroup("OwnData");
     QString accessToken = settings.value("accessToken").toString();
     int ownProfileID = settings.value("profileID").toInt();
@@ -215,7 +195,6 @@ void SettingsManager::readSettings()
         for (int counter = 0; counter < size; ++counter) {
             in >> id >> pix;
             vkLogic->storage->avatars.insert(id, pix);
-            //qDebug() << vkLogic->storage->getFullName(id);
         }
         qDebug() << "Total:" << vkLogic->storage->avatars.size()
                  << "avatars";

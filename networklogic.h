@@ -29,7 +29,6 @@ public:
 
     bool isAuthorized() { return authorized; }
 
-    //QNetworkAccessManager *getNam() { return nam; }
     int getOwnProfileID(){ return ownProfileID; }
 
     QPixmap getAvatar(int profileID);
@@ -75,14 +74,13 @@ private:
     } longpoll;
 
     MainWindow *mainWindow;
-    //SharedCookieJar *cookieJar;
     QNetworkAccessManager *nam;
 
     QQueue<Request> requestsQueue;
 
     const unsigned int dialogsCount = 50;
     int dialogsOffset = 0;
-    const unsigned int dialogPreviewLength = 10;
+    const unsigned int dialogPreviewLength = 20;
 
     const unsigned int messagesCount = 50;
     int messagesOffset = 0;
