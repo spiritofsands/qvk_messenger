@@ -33,7 +33,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     //---dialogs---
     connect(ui->dialogsWidget, SIGNAL(clicked(QModelIndex)),
-            this, SLOT(showMessagesWith(QModelIndex)));
+            this, SLOT(showConversationWith(QModelIndex)));
 
     //---webview---
     connect(ui->webEngine, SIGNAL(urlChanged(QUrl)),
@@ -286,7 +286,7 @@ void MainWindow::handleStorageUpdate(Storage::UpdateType type,
         //update friend list, dialogs, current conversation
 
     }
-    if (type == Storage::AVATAR_UPDATE)
+    else if (type == Storage::AVATAR_UPDATE)
     {
         if (ui->contentStackedWidget->currentIndex() == PERSON_PAGE
             && profileID == displayingUserProfile)
@@ -304,7 +304,7 @@ void MainWindow::handleStorageUpdate(Storage::UpdateType type,
             qDebug() << "Updating profile of"
                      << vkLogic->storage->getFullName(profileID)
                      << "on conversation page";
-            updateProfileInConversation(profileID);
+            displayProfileInConversation(profileID);
         }
         else// if (ui->contentStackedWidget->currentIndex() == DIALOGS_PAGE)
         {
@@ -312,26 +312,42 @@ void MainWindow::handleStorageUpdate(Storage::UpdateType type,
                      << vkLogic->storage->getFullName(profileID)
                      << "on dialogs page";
 
-            //updateProfileInDialogs(profileID);
+            updateProfileInDialogs(profileID);
         }
     }//==============================================================================
-    else if (type == Storage::DIALOG_UPDATE) {
-        qDebug() << "Updating dialog with " <<
+    else if (type == Storage::NEW_MESSAGE_UPDATE)
+    {
+        qDebug() << "Got new message from" <<
                     vkLogic->storage->getFullName(profileID);
 
-        QListWidgetItem *item;
+        //update dialogs
+        bool foundInDialogs = false;
+        QListWidgetItem *dialogItem;
+        for (int i = 0; i < ui->dialogsWidget->count(); ++i) {
+            dialogItem = ui->dialogsWidget->item(i);
+            if (dialogItem->data(DialogDelegate::PROFILE_ID_ROLE).toInt()
+                == profileID)
+            {
+                foundInDialogs = true;
+                break;
+            }
+        }
+        if (!foundInDialogs)
+            dialogItem = new QListWidgetItem(ui->dialogsWidget);
 
-        //if new item
-        if (ui->dialogsWidget->count() <= profileID)
-            item = new QListWidgetItem(ui->dialogsWidget);
-        else //if existing item
-            item = ui->dialogsWidget->item(profileID);
+        Message const dialog =
+                vkLogic->storage->getLastMessage(profileID);
+        loadDialogToListItem(dialog, dialogItem);
 
-        loadDialogToListItem(profileID, item);
-    }//==============================================================================
-    else if (type == Storage::MESSAGE_UPDATE)
-    {
-        //in progress
+        //update conversation
+        if (ui->contentStackedWidget->currentIndex() == CONVERSATION_PAGE
+                && displayingConversationWithUser == profileID)
+        {
+            QListWidgetItem *messageItem = new QListWidgetItem(ui->conversationWidget);
+            const Message &&m = vkLogic->storage->getMessage(profileID, messageID);
+            loadMessageToListItem(qMove(m), messageItem);
+        }
+
     }
     else {
         qDebug() << "Unknown type of storage update";
@@ -340,7 +356,7 @@ void MainWindow::handleStorageUpdate(Storage::UpdateType type,
 
 void MainWindow::displayProfilesList()
 {
-    foreach(int const &profileID, vkLogic->storage->getProfilesKeys()) {
+    foreach(int const &profileID, vkLogic->storage->getProfilesList()) {
         QListWidgetItem *listItem = new QListWidgetItem(ui->friendsListView);
         Profile const &&profile = vkLogic->storage->getProfile(profileID);
         QString text = profile.first_name + ' ' + profile.last_name;

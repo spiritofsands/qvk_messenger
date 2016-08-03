@@ -54,12 +54,12 @@ void NetworkLogic::proceedOneRequest( Request const &request )
 
     QNetworkReply *reply = nam->get(QNetworkRequest(request.URL()));
     connect(reply, &QNetworkReply::finished,
-            this, [=]{ serverReplyHandler(reply, request); });
+            this, [=]{ handleServerReply(reply, request); });
 
     numberOfActiveRequests++;
 }
 
-void NetworkLogic::serverReplyHandler(QNetworkReply *reply, Request const &request)
+void NetworkLogic::handleServerReply(QNetworkReply *reply, Request const &request)
 {
     auto type = request.type();
     qDebug() << "Handling reply of type" << Request::type(type)
@@ -222,16 +222,20 @@ void NetworkLogic::parseJsonReply(QJsonDocument const &jsonReply, Request const 
         }
 
         qDebug() << "\nCreating dialogs.\n";
+        int profileID;
         QJsonArray dialogsArray = response["items"].toArray();
         foreach (QJsonValue const &dialogJson, dialogsArray) {
             Message dialog = createMessageFromJsonObject(
                         prepareDialogJsonObject(dialogJson.toObject()));
-            storage->addDialog(dialog);
+
+            if (dialog.isMultiDialog)
+                profileID = dialog.chat_id;
+            else
+                profileID = dialog.user_id;
+            storage->addMessage(profileID, dialog);
         }
 
-        qDebug() << "Read dialogs:" << storage->numberOfDialogs() << "\n";
-
-        //mainWindow->handleStorageUpdate(Request::LOAD_DIALOGS);
+        qDebug() << "Handled dialogs response";
     }
     else if (type == Request::LOAD_CONVERSATION)
     {
@@ -270,10 +274,8 @@ void NetworkLogic::parseJsonReply(QJsonDocument const &jsonReply, Request const 
             storage->addMessage(request.profileID(), message);
         }
 
-        qDebug() << "Read messages:" << storage->numberOfDialogs() << "\n";
-
-        //mainWindow->handleStorageUpdate(Request::LOAD_CONVERSATION, request.profileID());
-    }
+        qDebug() << "Handled conversation load response";
+}
     else if (type == Request::SEND_MESSAGE)
     {
         if (!jsonObject.contains("response")) {
@@ -462,7 +464,7 @@ Message NetworkLogic::createMessageFromJsonObject(QJsonObject const &messageJson
     //msg.attachments
 
     if (messageJson.contains("fwd_messages")) {
-        qDebug() << "MessageJson is constains 'fwd_messages'";
+        qDebug() << "MessageJson constains 'fwd_messages'";
 
         if (!messageJson["fwd_messages"].isArray()) {
             qDebug() << "Error: messageJson['fwd_messages'] is not array";
@@ -539,7 +541,7 @@ void NetworkLogic::handleLongpollUpdate(QJsonArray const &update)
         int messageID = update[1].toInt();
         int mask = update[2].toInt();
         //peerID ignoring
-        qDebug() << "Resetting mask of flags of message"
+        qDebug() << "Resetting mask of message flags"
                  << messageID << "to" << mask;
         //storage->resetMessageFlags(messageID, mask);
         break;

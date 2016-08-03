@@ -3,9 +3,9 @@
 #include "dialogdelegate.h"
 
 //---dialog---
-void MainWindow::loadDialogToListItem(int dialogID, QListWidgetItem *listItem)
+void MainWindow::loadDialogToListItem(Message const &dialog,
+                                      QListWidgetItem *listItem)
 {
-    Message const &&dialog( vkLogic->storage->getDialog(dialogID) );
 
     QString name(vkLogic->storage->getFullName(dialog.user_id)),
             lastMessage(dialog.body);
@@ -23,7 +23,7 @@ void MainWindow::loadDialogToListItem(int dialogID, QListWidgetItem *listItem)
     else
         profileID = dialog.user_id;
 
-    qDebug() << "Loading dialog with" << name;
+    qDebug() << "Adding dialogitem with" << name;
 
     listItem->setData(Qt::DecorationRole,
                       vkLogic->getAvatar(profileID));
@@ -33,9 +33,9 @@ void MainWindow::loadDialogToListItem(int dialogID, QListWidgetItem *listItem)
     listItem->setData(DialogDelegate::READ_STATE_ROLE, dialog.read_state);
 }
 
-void MainWindow::updateProfileInDialogs(int profileID)
+void MainWindow::updateProfileInDialogs(int /*profileID*/)
 {
-    //in progress
+    qDebug() << "Not implemented: updateProfileInDialogs";
 }
 
 void MainWindow::requestAndShowDialogs()
@@ -46,14 +46,13 @@ void MainWindow::requestAndShowDialogs()
 }
 
 //---messages
-void MainWindow::loadMessageToListItem(Message const &&message, QListWidgetItem *listItem)
+void MainWindow::loadMessageToListItem(Message const &message, QListWidgetItem *listItem)
 {
     QString body;
 
     if (message.out)
         body.append(tr("You:\n"));
-    else
-    if (message.user_id != vkLogic->getOwnProfileID())
+    else if (message.user_id != vkLogic->getOwnProfileID())
         body.append(vkLogic->storage->getFullName(message.user_id))
                 .append('\n');
 
@@ -64,7 +63,7 @@ void MainWindow::loadMessageToListItem(Message const &&message, QListWidgetItem 
     listItem->setData(Qt::DisplayRole, body);
 }
 
-void MainWindow::updateProfileInConversation(int profileID)
+void MainWindow::displayProfileInConversation(int profileID)
 {
     qDebug() << "Updating info of" << vkLogic->storage->getFullName(profileID)
              << "in conversation";
@@ -93,36 +92,33 @@ void MainWindow::updateProfileInConversation(int profileID)
                 setText("<span style=\" vertical-align:super;\">offline</span>");
 }
 
-void MainWindow::showMessagesWith(QModelIndex index)
+void MainWindow::showConversationWith(QModelIndex index)
 {
-    Message const &&msg = vkLogic->storage->getDialog(index.row());
-    static int profileID;
-    if (msg.isMultiDialog)
-        profileID = msg.chat_id;
-    else
-        profileID = msg.user_id;
-
-    qDebug() << "Attempting to show dialog with"
+    int profileID = index.data(DialogDelegate::PROFILE_ID_ROLE).toInt();
+    qDebug() << "Attempting to show conversation with"
              << vkLogic->storage->getFullName(profileID);
 
-    displayingConversationWithUser = profileID;
-    ui->messagesWithUserWidget->clear();
     ui->contentStackedWidget->setCurrentIndex(CONVERSATION_PAGE);
-    updateProfileInConversation(profileID);
+    if (displayingConversationWithUser == profileID) {
+        //showing same conversation
 
-    vkLogic->makeRequest(Request::LOAD_CONVERSATION, profileID);
-}
+        qDebug() << "Nothing to do: already loaded";
+    } else {
+        //showing new conversation
 
-void MainWindow::updateMessagesWithCurrentUser()
-{
-    qDebug() << "Updating conversation with current user";
+        qDebug() << "Loading";
+        displayingConversationWithUser = profileID;
+        ui->conversationWidget->clear();
+        displayProfileInConversation(profileID);
 
-    static int profileID;
-    profileID = displayingConversationWithUser;
-
-    ui->messagesWithUserWidget->clear();
-    ui->contentStackedWidget->setCurrentIndex(CONVERSATION_PAGE);
-    updateProfileInConversation(profileID);
+        QList<Message> const &messages =
+                vkLogic->storage->getMessagesList(profileID);
+        if (!messages.isEmpty())
+            for (int i = 0; i < messages.size(); ++i) {
+                QListWidgetItem *messageItem = new QListWidgetItem(ui->conversationWidget);
+                loadMessageToListItem(messages[i], messageItem);
+            }
+    }
 
     vkLogic->makeRequest(Request::LOAD_CONVERSATION, profileID);
 }

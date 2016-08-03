@@ -31,6 +31,8 @@ public:
 
     int getOwnProfileID(){ return ownProfileID; }
 
+    int getDialogPreviewLength() { return dialogPreviewLength; }
+
     QPixmap getAvatar(int profileID);
 
     void makeRequest(Request::RequestType type,
@@ -45,7 +47,7 @@ public:
 private slots:
     void authorize();
     void proceedRequestsQueue();
-    void serverReplyHandler(QNetworkReply *reply, Request const &request);
+    void handleServerReply(QNetworkReply *reply, Request const &request);
 
 private:
     QTimer *authExpiredTimer;

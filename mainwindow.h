@@ -38,18 +38,17 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
     void showContentPage();
-    void updateMessagesWithCurrentUser();
 
 protected:
     void closeEvent(QCloseEvent *event);
 
 public slots:
     void showAuthPageAndLoadURL();
-    void showMessagesWith(QModelIndex index);
+    void showConversationWith(QModelIndex index);
 
 private slots:
     void authURLUpdated();
-    void showProfileInfo(int userID);
+    void showProfileInfo(int profileID);
     void requestAndShowDialogs();
     void sendMessage();
     void handleStorageUpdate(Storage::UpdateType type,
@@ -77,11 +76,11 @@ private:
     DialogDelegate dialogDelegate;
 
 
-    void updateProfileInConversation(int profileID);
+    void displayProfileInConversation(int profileID);
     void updateProfileInDialogs(int profileID);
-    void loadDialogToListItem(int profileID,
+    void loadDialogToListItem(Message const &dialog,
                                QListWidgetItem *listItem);
-    void loadMessageToListItem(Message const &&message,
+    void loadMessageToListItem(Message const &message,
                                QListWidgetItem *listItem);
     void setWindowPage(MainPages index);
     void updateOwnNameAndAvatar();

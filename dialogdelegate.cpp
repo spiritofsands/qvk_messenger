@@ -78,7 +78,7 @@ void DialogDelegate::paint(QPainter *painter,
 }
 
 QSize DialogDelegate::sizeHint (const QStyleOptionViewItem &option,
-                const QModelIndex &index ) const
+                const QModelIndex &/*index*/ ) const
 {
     return QSize(option.rect.width(), minHeight);
 }

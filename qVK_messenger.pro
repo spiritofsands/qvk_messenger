@@ -21,7 +21,8 @@ SOURCES += main.cpp\
     networklogic_auth.cpp \
     networklogic_requests.cpp \
     mainwindow_msg.cpp \
-    dialogdelegate.cpp
+    dialogdelegate.cpp \
+    storage.cpp
 
 HEADERS  += mainwindow.h \
     settingsmanager.h \
